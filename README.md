@@ -1,4 +1,4 @@
-# [Stock Comparison Project]
+# Stock Comparison Project
 
 This project is a web application featuring a React/Vite frontend and a Python/FastAPI backend. It fetches financial data (e.g., from Marketstack), provides API endpoints, caches data using Redis, and displays information using interactive charts.
 
