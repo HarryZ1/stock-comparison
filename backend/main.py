@@ -23,7 +23,12 @@ async def test_api():
     # NOTE: Free plan only has 1 year history!
     url = f"https://api.marketstack.com/v2/eod?access_key={MARKETSTACK_API_KEY}"
 
-    queryString = {"symbols":"AAPL", "date_from":"2024-05-08", "date_to":"2024-05-10"}
+    queryString = {
+        "symbols":"AAPL",
+        "date_from":"2024-05-10",
+        "date_to":"2025-04-25",
+        "limit": 365,
+        }
     try:
         response = requests.get(url, params=queryString)
         response.raise_for_status() # Raise an exception for bad status codes
