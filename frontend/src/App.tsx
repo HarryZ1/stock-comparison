@@ -37,10 +37,12 @@ interface ApiResponse {
 
 function App() {
   const [data, setData] = useState<ApiResponse | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [userInput, setUserInput] = useState("");
+  const [showUserInput, setShowUserInput] = useState(false);
 
-  const fetchData = async () => {
-    setError('');
+  const testFetchData = async () => {
+    setError("");
     setData(null);
     try {
       const response = await axios.get<ApiResponse>('/api/test-marketstack');
@@ -54,6 +56,30 @@ function App() {
 
       setError(newMessage);
       console.error('Caught Error', err);
+    }
+  };
+
+  const fetchData = async () => {
+    if (!userInput.trim()) {
+      setError("Please enter a stock symbol!");
+      return;
+    }
+    setError("");
+    setData(null);
+
+    try {
+      const response = await axios.get<ApiResponse>(`/api/market-stack?symbols=${userInput.toUpperCase()}`);
+      setShowUserInput(true);
+      setData(response.data);
+    } catch (err) {
+      let newMessage = "An Unknow Error was Found!";
+
+      if (err instanceof Error) {
+        newMessage = err.message;
+      }
+
+      setError(newMessage);
+      console.log('Caught Error', err);
     }
   };
 
@@ -77,7 +103,11 @@ function App() {
   return (
     <div>
       <h1>Stock Comparison App</h1>
-      <button onClick={fetchData}>Test Marketstack API</button>
+      <input type="text" onChange={(event) => {setUserInput(event.target.value)}}/>
+      <button onClick={fetchData}> Enter </button>
+      {showUserInput && userInput}
+
+      <button onClick={testFetchData}>Test Marketstack API</button>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
       {data && <pre>{JSON.stringify(data, null, 3)}</pre>}
       {data && data.data && data.data.length > 0 && (
@@ -91,6 +121,7 @@ function App() {
           />
         ))
       )}
+
     </div>
   );
 }

@@ -1,5 +1,5 @@
 # backend/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from dotenv import load_dotenv
 import os
 import requests # Example import
@@ -32,6 +32,26 @@ async def test_api():
     try:
         response = requests.get(url, params=queryString)
         response.raise_for_status() # Raise an exception for bad status codes
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"error": f"API request failed: {e}"}
+    
+@app.get("/api/market-stack")
+async def fetch_data(symbols : str = Query(...)):
+    if not MARKETSTACK_API_KEY:
+        return {"error": "API key not configured"}
+    
+    url = f"https://api.marketstack.com/v2/eod?access_key={MARKETSTACK_API_KEY}"
+
+    queryString = {
+        "symbols" : symbols.upper(),
+        "date_from":"2024-05-10",
+        "date_to":"2025-04-25",
+        "limit": 365,
+    }
+    try:
+        response = requests.get(url, params=queryString)
+        response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         return {"error": f"API request failed: {e}"}
