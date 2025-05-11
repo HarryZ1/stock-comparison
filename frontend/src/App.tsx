@@ -103,7 +103,9 @@ function App() {
   return (
     <div>
       <h1>Stock Comparison App</h1>
-      <input type="text" onChange={(event) => {setUserInput(event.target.value)}}/>
+      <input type="text" value={userInput} onChange={(event) => {
+        setUserInput(event.target.value.replace(/[^a-zA-Z]/g, ''))
+        }}/>
       <button onClick={fetchData}> Enter </button>
       {showUserInput && userInput}
 
