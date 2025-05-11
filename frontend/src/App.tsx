@@ -30,23 +30,34 @@ interface ApiStockItem {
   date: string;
 }
 
+// Raw Data from MarketStack API
 interface ApiResponse {
   pagination: Pagination;
   data: ApiStockItem[];
 }
 
+// This is what our backend /api/market-stack will return
+interface ProcessedApiResponse {
+  market_data: ApiResponse;
+  portfolio_performance: Array<{date: string; portfolio_value: number }>;
+}
+
 function App() {
-  const [data, setData] = useState<ApiResponse | null>(null);
+  const [data, setData] = useState<ProcessedApiResponse | null>(null);
   const [error, setError] = useState("");
   const [tempUserInput, setTempUserInput] = useState("");
   const [portfolioValInput, setPortfolioValInput] = useState("");
   const [portfolioVal, setPortfolioVal] = useState(0);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateFromInput, setDateFromInput] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [dateToInput, setDateToInput] = useState("");
 
   const testFetchData = async () => {
     setError("");
     setData(null);
     try {
-      const response = await axios.get<ApiResponse>('/api/test-marketstack');
+      const response = await axios.get<ProcessedApiResponse>('/api/test-marketstack');
       setData(response.data);
     } catch (err) {
       let newMessage = "An Unknown Error was Found!";
@@ -69,7 +80,14 @@ function App() {
     setData(null);
 
     try {
-      const response = await axios.get<ApiResponse>(`/api/market-stack?symbols=${tempUserInput.toUpperCase()}`);
+      const params = new URLSearchParams();
+      params.append('symbols', tempUserInput)
+
+      if (portfolioVal > 0) {
+        params.append('initial_investment', portfolioVal.toString())
+      }
+
+      const response = await axios.get<ProcessedApiResponse>(`/api/market-stack?symbols=${params.toString()}`);
       setTempUserInput("");
       setData(response.data);
     } catch (err) {
@@ -109,6 +127,20 @@ function App() {
 
   }
 
+  const handleSaveDateFrom = () => {
+    const val = dateFromInput;
+
+    setDateFrom(val);
+    setDateFromInput("");
+  }
+
+const handleSaveDateTo = () => {
+    const val = dateToInput;
+
+    setDateTo(val);
+    setDateToInput("");
+  }
+
   return (
     <div>
       <h1>Stock Comparison App</h1>
@@ -125,14 +157,33 @@ function App() {
         }}/>
         <button onClick={handleSavePortfolio}> Save </button>
       </p>
+
+        <h2>
+          Choose Starting Investment Date
+        </h2>
+        <input type="date" value={dateFromInput} onChange={(event) => {
+          setDateFromInput(event.target.value);
+        }}/>
+        <button onClick={handleSaveDateFrom}> Save </button>
+        {dateFrom}
+
+        <h2>
+          Choose Ending Investment Date
+        </h2>
+        <input type="date" value={dateToInput} onChange={(event) => {
+          setDateToInput(event.target.value);
+        }}/>
+        <button onClick={handleSaveDateTo}> Save </button>
+        {dateTo}
+
       <p>
         {`Your Portfolio Value: ${portfolioVal}`}
       </p>
       <button onClick={testFetchData}>Test Marketstack API</button>
       {error && <p style={{ color: 'red' }}> Error: {error}</p>}
       {data && <pre>{JSON.stringify(data, null, 3)}</pre>}
-      {data && data.data && data.data.length > 0 && (
-        data.data.map((stockItem: ApiStockItem) => (
+      {data && data.market_data && data.market_data.data.length > 0 && (
+        data.market_data.data?.map((stockItem: ApiStockItem) => (
           <Stock 
           key={stockItem.symbol + stockItem.date} //Adds a Unique Key
           symbol={stockItem.symbol}
