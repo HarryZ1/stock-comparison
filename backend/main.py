@@ -56,3 +56,6 @@ async def fetch_data(symbols : str = Query(...)):
     except requests.exceptions.RequestException as e:
         return {"error": f"API request failed: {e}"}
 
+
+#def calculate_daily_portfolio_val():
+    

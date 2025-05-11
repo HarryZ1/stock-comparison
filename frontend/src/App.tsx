@@ -38,8 +38,9 @@ interface ApiResponse {
 function App() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [error, setError] = useState("");
-  const [userInput, setUserInput] = useState("");
-  const [showUserInput, setShowUserInput] = useState(false);
+  const [tempUserInput, setTempUserInput] = useState("");
+  const [portfolioValInput, setPortfolioValInput] = useState("");
+  const [portfolioVal, setPortfolioVal] = useState(0);
 
   const testFetchData = async () => {
     setError("");
@@ -60,7 +61,7 @@ function App() {
   };
 
   const fetchData = async () => {
-    if (!userInput.trim()) {
+    if (!tempUserInput) {
       setError("Please enter a stock symbol!");
       return;
     }
@@ -68,8 +69,8 @@ function App() {
     setData(null);
 
     try {
-      const response = await axios.get<ApiResponse>(`/api/market-stack?symbols=${userInput.toUpperCase()}`);
-      setShowUserInput(true);
+      const response = await axios.get<ApiResponse>(`/api/market-stack?symbols=${tempUserInput.toUpperCase()}`);
+      setTempUserInput("");
       setData(response.data);
     } catch (err) {
       let newMessage = "An Unknow Error was Found!";
@@ -100,17 +101,35 @@ function App() {
     );
   }
 
+  const handleSavePortfolio = () => {
+    const val = parseFloat(portfolioValInput);
+
+    setPortfolioVal(isNaN(val) ? 0 : val);
+    setPortfolioValInput("");
+
+  }
+
   return (
     <div>
       <h1>Stock Comparison App</h1>
-      <input type="text" value={userInput} onChange={(event) => {
-        setUserInput(event.target.value.replace(/[^a-zA-Z]/g, ''))
-        }}/>
-      <button onClick={fetchData}> Enter </button>
-      {showUserInput && userInput}
+      <p>
+        <input type="text" value={tempUserInput} placeholder="Enter a Stock Symbol" onChange={(event) => {
+          setTempUserInput(event.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase());
+          }}/>
+        <button onClick={fetchData}> Enter </button>
+      </p>
 
+      <p>
+        <input type="number" value={portfolioValInput} placeholder="Enter Initial Investment Amount" onChange={(event) => {
+          setPortfolioValInput(event.target.value.replace(/[^0-9]/g, ''));
+        }}/>
+        <button onClick={handleSavePortfolio}> Save </button>
+      </p>
+      <p>
+        {`Your Portfolio Value: ${portfolioVal}`}
+      </p>
       <button onClick={testFetchData}>Test Marketstack API</button>
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      {error && <p style={{ color: 'red' }}> Error: {error}</p>}
       {data && <pre>{JSON.stringify(data, null, 3)}</pre>}
       {data && data.data && data.data.length > 0 && (
         data.data.map((stockItem: ApiStockItem) => (
