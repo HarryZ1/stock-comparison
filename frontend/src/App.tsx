@@ -39,13 +39,14 @@ interface ApiResponse {
 // This is what our backend /api/market-stack will return
 interface ProcessedApiResponse {
   market_data: ApiResponse;
-  portfolio_performance: Array<{date: string; portfolio_value: number }>;
+  portfolio_performance: Array<{date: string; portfolio_value: number}>;
 }
 
 function App() {
   const [data, setData] = useState<ProcessedApiResponse | null>(null);
   const [error, setError] = useState("");
-  const [tempUserInput, setTempUserInput] = useState("");
+  const [symbolInput, setSymbolInput] = useState("");
+  const [symbolList, setSymbolList] = useState<string[]>([]);
   const [portfolioValInput, setPortfolioValInput] = useState("");
   const [portfolioVal, setPortfolioVal] = useState(0);
   const [dateFrom, setDateFrom] = useState("");
@@ -72,23 +73,24 @@ function App() {
   };
 
   const fetchData = async () => {
-    if (!tempUserInput) {
+    if (!symbolInput) {
       setError("Please enter a stock symbol!");
       return;
     }
     setError("");
     setData(null);
+    setSymbolList(prevSymbolList => [...prevSymbolList, symbolInput]);
 
     try {
       const params = new URLSearchParams();
-      params.append('symbols', tempUserInput)
+      params.append('symbols', symbolInput)
 
       if (portfolioVal > 0) {
         params.append('initial_investment', portfolioVal.toString())
       }
 
       const response = await axios.get<ProcessedApiResponse>(`/api/market-stack?symbols=${params.toString()}`);
-      setTempUserInput("");
+      setSymbolInput("");
       setData(response.data);
     } catch (err) {
       let newMessage = "An Unknow Error was Found!";
@@ -145,10 +147,11 @@ const handleSaveDateTo = () => {
     <div>
       <h1>Stock Comparison App</h1>
       <p>
-        <input type="text" value={tempUserInput} placeholder="Enter a Stock Symbol" onChange={(event) => {
-          setTempUserInput(event.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase());
+        <input type="text" value={symbolInput} placeholder="Enter a Stock Symbol" onChange={(event) => {
+          setSymbolInput(event.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase());
           }}/>
         <button onClick={fetchData}> Enter </button>
+        {`Your Stock Picks: ${symbolList.toString()}`}
       </p>
 
       <p>
@@ -156,7 +159,9 @@ const handleSaveDateTo = () => {
           setPortfolioValInput(event.target.value.replace(/[^0-9]/g, ''));
         }}/>
         <button onClick={handleSavePortfolio}> Save </button>
+        {`Your Portfolio Value: ${portfolioVal}`}
       </p>
+
 
         <h2>
           Choose Starting Investment Date
@@ -165,7 +170,7 @@ const handleSaveDateTo = () => {
           setDateFromInput(event.target.value);
         }}/>
         <button onClick={handleSaveDateFrom}> Save </button>
-        {dateFrom}
+        {`Date From: ${dateFrom}`}
 
         <h2>
           Choose Ending Investment Date
@@ -174,12 +179,10 @@ const handleSaveDateTo = () => {
           setDateToInput(event.target.value);
         }}/>
         <button onClick={handleSaveDateTo}> Save </button>
-        {dateTo}
-
+        {`Date To: ${dateTo}`}
       <p>
-        {`Your Portfolio Value: ${portfolioVal}`}
+        <button onClick={testFetchData}>Test Marketstack API</button>
       </p>
-      <button onClick={testFetchData}>Test Marketstack API</button>
       {error && <p style={{ color: 'red' }}> Error: {error}</p>}
       {data && <pre>{JSON.stringify(data, null, 3)}</pre>}
       {data && data.market_data && data.market_data.data.length > 0 && (
@@ -194,6 +197,16 @@ const handleSaveDateTo = () => {
         ))
       )}
 
+      <h1> Your Profile </h1>
+      <h2>
+        {`Stock Picks: ${symbolList.toString()}`}
+        <br/>
+        {`Portfolio Value: ${portfolioVal}`}
+        <br/>
+        {`Date From: ${dateFrom}`}
+        <br/>
+        {`Date To: ${dateTo}`}
+      </h2>
     </div>
   );
 }
