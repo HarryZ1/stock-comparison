@@ -37,7 +37,11 @@ async def test_api():
         return {"error": f"API request failed: {e}"}
     
 @app.get("/api/market-stack")
-async def fetch_data(symbols : str = Query(...)):
+async def fetch_data(symbols : str = Query(...),
+                     initial_investment : float = Query(...),
+                     date_from : str = Query(...),
+                     date_to : str = Query(...)
+                     ):
     if not MARKETSTACK_API_KEY:
         return {"error": "API key not configured"}
     
@@ -45,8 +49,8 @@ async def fetch_data(symbols : str = Query(...)):
 
     queryString = {
         "symbols" : symbols.upper(),
-        "date_from":"2024-05-10",
-        "date_to":"2025-04-25",
+        "date_from":date_from,
+        "date_to":date_to,
         "limit": 365,
     }
     try:
