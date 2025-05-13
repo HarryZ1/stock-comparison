@@ -101,7 +101,6 @@ function App() {
       }
 
       const response = await axios.get<ProcessedApiResponse>(`/api/market-stack?${params.toString()}`);
-      console.log(params.toString())
       setData(response.data);
     } catch (err) {
       let newMessage = "An Unknow Error was Found!";
@@ -177,8 +176,8 @@ const handleSaveDateTo = () => {
       </p>
 
       <p>
-        <input type="number" value={portfolioValInput} placeholder="Enter Initial Investment Amount" onChange={(event) => {
-          setPortfolioValInput(event.target.value.replace(/[^0-9]/g, ''));
+        <input type="number" step="any" value={portfolioValInput} placeholder="Enter Initial Investment Amount" onChange={(event) => {
+          setPortfolioValInput(event.target.value.replace(/[^0-9.]/g, ''));
         }}/>
         <button onClick={handleSavePortfolio}> Save </button>
         {`Your Portfolio Value: ${portfolioVal}`}
