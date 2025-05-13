@@ -72,15 +72,13 @@ async def fetch_data(symbols : str = Query(...),
     
     try:
         start_date_obj = datetime.strptime(date_from, "%Y-%m-%d").date()
-        end_date_obj = datetime.strptime().date(date_to, "%Y-%m-%d").date()
+        end_date_obj = datetime.strptime(date_to, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
 
     if start_date_obj > end_date_obj:
         raise HTTPException(status_code=400, detail="Start date cannot be after end date.")
 
-    num_symbol = len(symbol_list)
-    
     
     marketstack_url = "https://api.marketstack.com/v2/eod"
 
@@ -129,10 +127,10 @@ async def fetch_data(symbols : str = Query(...),
     first_valid_date_obj = None
     for item in api_data:
         item_date_obj = parse_date_minimal(item)
-        symbol = item.get("symbol")
-        if item_date_obj and symbol and start_date_obj <= item_date_obj <= end_date_obj:
+        symbol_from_item = item.get("symbol")
+        if item_date_obj and symbol_from_item and start_date_obj <= item_date_obj <= end_date_obj:
             date_str = item_date_obj.strftime("%Y-%m-%d")
-            data_by_date[date_str][symbol] = item
+            data_by_date[date_str][symbol_from_item] = item
             if first_valid_date_obj is None:
                 first_valid_date_obj = item_date_obj
     
@@ -147,7 +145,7 @@ async def fetch_data(symbols : str = Query(...),
 
     first_day_data = data_by_date.get(first_valid_date_str, {})
 
-    for s in symbols:
+    for s in symbol_list:
         item = first_day_data.get(s)
         if item and item.get("adj_close") is not None and item["adj_close"] > 0:
             initial_price = item["adj_close"]
