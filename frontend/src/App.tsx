@@ -103,8 +103,15 @@ function App() {
       const responseData = response?.data;
       setData(responseData);
       if (responseData?.excluded_symbols?.length > 0) {
+        const excludedSymbolsSet = new Set(responseData.excluded_symbols);
+        const updatedSymbolsList = symbolList.filter(
+          (symbol) => !excludedSymbolsSet.has(symbol)
+        );
+
+        setSymbolList(updatedSymbolsList);
+
         const excludedSymbolsList = responseData.excluded_symbols.join(", ");
-        let notificationMessage = `The following symbols had insufficient data and were not included in the graph: ${excludedSymbolsList}.`;
+        let notificationMessage = `The following symbols had insufficient data and were not included in the graph: ${excludedSymbolsList}. I've removed them from your stock list.`;
 
         if (responseData.market_data?.data.length > 0) {
           notificationMessage += " Data for other requested symbols should still be displayed.";
