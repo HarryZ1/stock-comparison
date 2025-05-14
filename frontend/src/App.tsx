@@ -157,6 +157,12 @@ function App() {
       return;
     }
 
+    if (symbolList.length >= 3) {
+      setError("You can only select a max of 3 stocks!");
+      setSymbolInput("");
+      return;
+    }
+
     setSymbolList(prevSymbolList => [...prevSymbolList, symbolInput]);
     setSymbolInput("");
     setError("");
