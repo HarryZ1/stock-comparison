@@ -87,7 +87,7 @@ async def fetch_data(symbols : str = Query(...),
         "symbols" : ",".join(symbol_list),
         "date_from": date_from,
         "date_to": date_to,
-        "limit": 365,
+        "limit": 10,
         "sort": "ASC"
     }
 
@@ -172,7 +172,7 @@ async def fetch_data(symbols : str = Query(...),
             
             individual_stock_performance[symbol_held].append({
                 "date": curr_date,
-                "value": round(curr_stock_value, 2)
+                "portfolio_value": round(curr_stock_value, 2)
             })
 
     return {

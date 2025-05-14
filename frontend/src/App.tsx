@@ -39,11 +39,12 @@ interface ApiResponse {
 // This is what our backend /api/market-stack will return
 interface ProcessedApiResponse {
   market_data: ApiResponse;
-  portfolio_performance: Array<{date: string; portfolio_value: number}>;
+  individual_stock_performance: Array<{date: string; portfolio_value: number}>;
+  excluded_symbols: Array<string>;
 }
 
 function App() {
-  const [data, setData] = useState<ProcessedApiResponse | null>(null);
+  const [data, setData] = useState<ProcessedApiResponse>();
   const [error, setError] = useState("");
   const [symbolInput, setSymbolInput] = useState("");
   const [symbolList, setSymbolList] = useState<string[]>([]);
@@ -56,10 +57,9 @@ function App() {
 
   const testFetchData = async () => {
     setError("");
-    setData(null);
     try {
       const response = await axios.get<ProcessedApiResponse>('/api/test-marketstack');
-      setData(response.data);
+      setData(response?.data);
     } catch (err) {
       let newMessage = "An Unknown Error was Found!";
 
@@ -74,7 +74,6 @@ function App() {
 
   const fetchData = async () => {
     setError("");
-    setData(null);
 
     try {
       const params = new URLSearchParams();
@@ -101,14 +100,27 @@ function App() {
       }
 
       const response = await axios.get<ProcessedApiResponse>(`/api/market-stack?${params.toString()}`);
-      setData(response.data);
+      const responseData = response?.data;
+      setData(responseData);
+      if (responseData?.excluded_symbols?.length > 0) {
+        const excludedSymbolsList = responseData.excluded_symbols.join(", ");
+        let notificationMessage = `The following symbols had insufficient data and were not included in the graph: ${excludedSymbolsList}.`;
+
+        if (responseData.market_data?.data.length > 0) {
+          notificationMessage += " Data for other requested symbols should still be displayed.";
+          setError(notificationMessage);
+        } else {
+          notificationMessage += " No other data could be retrieved for the graph.";
+          setError(notificationMessage);
+        }
+      }
     } catch (err) {
-      let newMessage = "An Unknow Error was Found!";
+      let newMessage = "An Unknown Error was Found!";
 
       if (err instanceof Error) {
         newMessage = err.message;
       }
-
+      setData(undefined);
       setError(newMessage);
       console.log('Caught Error', err);
     }
@@ -120,6 +132,7 @@ function App() {
     dividend: number;
     date: string;
   }
+  
   const Stock = (props: StockProps) => {
     return (
       <div>
