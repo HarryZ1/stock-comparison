@@ -356,18 +356,42 @@ const handleSaveDateTo = () => {
     <div>
       <h1>Stock Comparison App</h1>
       <p>
-        <input type="text" value={symbolInput} placeholder="Enter a Stock Symbol" onChange={(event) => {
-          setSymbolInput(event.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase());
-          }}/>
-        <button onClick={handleSaveStock}> Enter </button>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSaveStock();
+          }}
+        >
+          <input
+            type="text"
+            value={symbolInput}
+            placeholder="Enter a Stock Symbol"
+            onChange={(event) => {
+              setSymbolInput(event.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase());
+            }}
+          />
+          <button type="submit"> Enter </button>
+        </form>
         {`Your Stock Picks: ${symbolList.toString()}`}
       </p>
 
       <p>
-        <input type="number" step="any" value={portfolioValInput} placeholder="Enter Initial Investment Amount" onChange={(event) => {
-          setPortfolioValInput(event.target.value.replace(/[^0-9.]/g, ''));
-        }}/>
-        <button onClick={handleSavePortfolio}> Save </button>
+        <form onSubmit={(event) => {
+            event.preventDefault();
+            handleSavePortfolio();
+          }}
+        >
+          <input
+            type="number"
+            step="any"
+            value={portfolioValInput}
+            placeholder="Enter Initial Investment Amount"
+            onChange={(event) => {
+              setPortfolioValInput(event.target.value.replace(/[^0-9.]/g, ''));
+            }}
+          />
+          <button type="submit"> Save </button>
+        </form>
         {`Your Portfolio Value: ${portfolioVal}`}
       </p>
 
@@ -375,19 +399,41 @@ const handleSaveDateTo = () => {
         <h2>
           Choose Starting Investment Date
         </h2>
-        <input type="date" value={dateFromInput} onChange={(event) => {
-          setDateFromInput(event.target.value);
-        }}/>
-        <button onClick={handleSaveDateFrom}> Save </button>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSaveDateFrom();
+          }}
+        >
+          <input
+            type="date"
+            value={dateFromInput}
+            onChange={(event) => {
+              setDateFromInput(event.target.value);
+            }}
+          />
+          <button type="submit"> Save </button>
+        </form>
         {`Date From: ${dateFrom}`}
  
         <h2>
           Choose Ending Investment Date
         </h2>
-        <input type="date" value={dateToInput} onChange={(event) => {
-          setDateToInput(event.target.value);
-        }}/>
-        <button onClick={handleSaveDateTo}> Save </button>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSaveDateTo();
+          }}
+        >
+          <input
+            type="date"
+            value={dateToInput}
+            onChange={(event) => {
+              setDateToInput(event.target.value);
+            }}
+          />
+          <button type="submit"> Save </button>
+        </form>
         {`Date To: ${dateTo}`}
 
       <p>
@@ -423,7 +469,6 @@ const handleSaveDateTo = () => {
           />
         ))
       )}
-
 
       <h1> Your Profile </h1>
       <h2>
