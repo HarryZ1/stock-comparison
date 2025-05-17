@@ -276,11 +276,12 @@ function App() {
     if (dateFromInput) {
       if (new Date(dateFromInput) > new Date(dateTo)) {
         setError("Start date cannot be after the current end date. Please adjust the end date or choose an earlier start date.");
+        setDateFromInput("");
         return;
       }
       if (dateFromInput < minAllowedStartDateString) {
         setError(`Start date cannot be earlier than ${minAllowedStartDateString}.`);
-        setDateFromInput(minAllowedStartDateString);
+        setDateFromInput("");
         return;
       }
       setDateFrom(dateFromInput);
@@ -294,11 +295,12 @@ const handleSaveDateTo = () => {
     if (dateToInput) {
       if (new Date(dateToInput) < new Date(dateFrom)) {
         setError("End date cannot be before the current start date. Please adjust the start date or choose a later end date.");
+        setDateToInput("");
         return;
       }
       if (dateToInput > todayString) {
         setError(`End date cannot be in the future.`);
-        setDateToInput(todayString);
+        setDateToInput("");
         return;
       }
       setDateTo(dateToInput);
