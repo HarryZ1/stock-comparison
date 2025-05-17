@@ -1,6 +1,29 @@
 import { useState } from 'react';
 import axios from 'axios';
 
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  type ChartData
+} from 'chart.js';
+import StockChart from './StockChart';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
 interface Pagination {
   limit: number;
   offset: number;
@@ -36,24 +59,47 @@ interface ApiResponse {
   data: ApiStockItem[];
 }
 
+interface StockPerformanceEntry {
+  date: string;
+  portfolio_value: number;
+}
+
+interface IndividualStockPerformance{
+  [symbol : string] : StockPerformanceEntry[];
+}
+
 // This is what our backend /api/market-stack will return
 interface ProcessedApiResponse {
   market_data: ApiResponse;
-  individual_stock_performance: Array<{date: string; portfolio_value: number}>;
-  excluded_symbols: Array<string>;
+  individual_stock_performance: IndividualStockPerformance;
+  excluded_symbols: string[];
+}
+
+const formatDateToYYYYMMDD = (date: Date): string => {
+  return date.toISOString().split('T')[0];
 }
 
 function App() {
+  const today = new Date();
+  const todayString = formatDateToYYYYMMDD(today);
+
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(today.getFullYear() - 1);
+
+  const minAllowedStartDateString = formatDateToYYYYMMDD(oneYearAgo);
+
   const [data, setData] = useState<ProcessedApiResponse>();
   const [error, setError] = useState("");
   const [symbolInput, setSymbolInput] = useState("");
   const [symbolList, setSymbolList] = useState<string[]>([]);
   const [portfolioValInput, setPortfolioValInput] = useState("");
   const [portfolioVal, setPortfolioVal] = useState(0);
-  const [dateFrom, setDateFrom] = useState("2024-04-15");
+  const [dateFrom, setDateFrom] = useState(minAllowedStartDateString);
   const [dateFromInput, setDateFromInput] = useState("");
-  const [dateTo, setDateTo] = useState("2025-04-15");
+  const [dateTo, setDateTo] = useState(todayString);
   const [dateToInput, setDateToInput] = useState("");
+  const [chartData, setChartData] = useState<ChartData<'line'>>({ labels: [], datasets: [] });
+  const [isLoading, setIsLoading] = useState(false); // For loading indicator
 
   const testFetchData = async () => {
     setError("");
@@ -74,6 +120,8 @@ function App() {
 
   const fetchData = async () => {
     setError("");
+    setIsLoading(true);
+    setChartData({ labels: [], datasets: [] });
 
     try {
       const params = new URLSearchParams();
@@ -100,7 +148,7 @@ function App() {
       }
 
       const response = await axios.get<ProcessedApiResponse>(`/api/market-stack?${params.toString()}`);
-      const responseData = response?.data;
+      const responseData = response?.data as ProcessedApiResponse;
       setData(responseData);
       if (responseData?.excluded_symbols?.length > 0) {
         const excludedSymbolsSet = new Set(responseData.excluded_symbols);
@@ -121,6 +169,52 @@ function App() {
           setError(notificationMessage);
         }
       }
+
+      if (responseData?.individual_stock_performance && Object.keys(responseData.individual_stock_performance).length > 0) {
+        const performanceData = responseData.individual_stock_performance;
+        const symbolsWithData = Object.keys(performanceData).filter(symbol => performanceData[symbol]?.length > 0);
+
+        if (symbolsWithData.length > 0) {
+          // Get all unique dates from all series and sort them
+          const allDates = new Set<string>();
+          symbolsWithData.forEach(symbol => {
+            performanceData[symbol].forEach(dataPoint => allDates.add(dataPoint.date));
+          });
+          const sortedDates = Array.from(allDates).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+          const datasets = symbolsWithData.map((symbol, index) => {
+            const stockDataPoints = performanceData[symbol];
+            const valueMap = new Map(stockDataPoints.map(dp => [dp.date, dp.portfolio_value]));
+
+            // Define an array of distinct colors
+            const lineColors = [
+              'rgb(255, 99, 132)', // Red
+              'rgb(54, 162, 235)', // Blue
+              'rgb(75, 192, 192)', // Green
+              'rgb(153, 102, 255)',// Purple
+              'rgb(255, 159, 64)'  // Orange
+            ];
+
+            return {
+              label: symbol,
+              data: sortedDates.map(date => valueMap.get(date) ?? null), // Use null for missing data points
+              borderColor: lineColors[index % lineColors.length],
+              backgroundColor: lineColors[index % lineColors.length].replace('rgb', 'rgba').replace(')', ', 0.5)'), // For legend point style
+              fill: false,
+              tension: 0.1, // Makes lines slightly curved
+            };
+          });
+
+          setChartData({
+            labels: sortedDates,
+            datasets: datasets,
+          });
+        } else {
+          setChartData({ labels: [], datasets: [] }); // No valid performance data
+        }
+      } else {
+        setChartData({ labels: [], datasets: [] }); // No performance data block
+      }
     } catch (err) {
       let newMessage = "An Unknown Error was Found!";
 
@@ -130,6 +224,8 @@ function App() {
       setData(undefined);
       setError(newMessage);
       console.log('Caught Error', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -140,7 +236,7 @@ function App() {
     date: string;
   }
   
-  const Stock = (props: StockProps) => {
+    const Stock = (props: StockProps) => {
     return (
       <div>
         <h1> Symbol: {props.symbol} </h1>
@@ -177,17 +273,39 @@ function App() {
   }
 
   const handleSaveDateFrom = () => {
-    const val = dateFromInput;
-
-    setDateFrom(val);
-    setDateFromInput("");
+    if (dateFromInput) {
+      if (new Date(dateFromInput) > new Date(dateTo)) {
+        setError("Start date cannot be after the current end date. Please adjust the end date or choose an earlier start date.");
+        return;
+      }
+      if (dateFromInput < minAllowedStartDateString) {
+        setError(`Start date cannot be earlier than ${minAllowedStartDateString}.`);
+        setDateFromInput(minAllowedStartDateString);
+        return;
+      }
+      setDateFrom(dateFromInput);
+      setError("");
+    } else {
+      setError("Please select a valid start date.");
+    }
   }
 
 const handleSaveDateTo = () => {
-    const val = dateToInput;
-
-    setDateTo(val);
-    setDateToInput("");
+    if (dateToInput) {
+      if (new Date(dateToInput) < new Date(dateFrom)) {
+        setError("End date cannot be before the current start date. Please adjust the start date or choose a later end date.");
+        return;
+      }
+      if (dateToInput > todayString) {
+        setError(`End date cannot be in the future.`);
+        setDateToInput(todayString);
+        return;
+      }
+      setDateTo(dateToInput);
+      setError("");
+    } else {
+      setError("Please select a valid end date.");
+    }
   }
 
   return (
@@ -235,8 +353,20 @@ const handleSaveDateTo = () => {
       <p>
         <button onClick={fetchData}> Start </button>
       </p>
+      
+      {isLoading && <p>Loading performance data...</p>}
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
 
-      {error && <p style={{ color: 'red' }}> Error: {error}</p>}
+      {/* Conditionally render the chart */}
+      {!isLoading && chartData.datasets.length > 0 && (
+        <div style={{ marginTop: '20px', marginBottom: '40px' }}>
+          <StockChart data={chartData} />
+        </div>
+      )}
+      {!isLoading && chartData.datasets.length === 0 && data && ( // data confirms an API call was made
+        <p>No data available to display chart for the selected criteria.</p>
+      )}
+
       {data && <pre>{JSON.stringify(data, null, 3)}</pre>}
       {data && data.market_data && data.market_data.data.length > 0 && (
         data.market_data.data?.map((stockItem: ApiStockItem) => (
@@ -249,6 +379,7 @@ const handleSaveDateTo = () => {
           />
         ))
       )}
+
 
       <h1> Your Profile </h1>
       <h2>
