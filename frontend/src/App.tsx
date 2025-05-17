@@ -73,6 +73,11 @@ interface ProcessedApiResponse {
   market_data: ApiResponse;
   individual_stock_performance: IndividualStockPerformance;
   excluded_symbols: string[];
+  requested_date_from: string;
+  requested_date_to: string;
+  actual_data_start_date: string | null;
+  actual_data_end_date: string | null;
+  detail?: string;
 }
 
 const formatDateToYYYYMMDD = (date: Date): string => {
@@ -88,7 +93,7 @@ function App() {
 
   const minAllowedStartDateString = formatDateToYYYYMMDD(oneYearAgo);
 
-  const [data, setData] = useState<ProcessedApiResponse>();
+  const [data, setData] = useState<ProcessedApiResponse | undefined>();
   const [error, setError] = useState("");
   const [symbolInput, setSymbolInput] = useState("");
   const [symbolList, setSymbolList] = useState<string[]>([]);
@@ -148,8 +153,11 @@ function App() {
       }
 
       const response = await axios.get<ProcessedApiResponse>(`/api/market-stack?${params.toString()}`);
-      const responseData = response?.data as ProcessedApiResponse;
+      const responseData = response?.data;
       setData(responseData);
+
+      let notificationMessage = "";
+
       if (responseData?.excluded_symbols?.length > 0) {
         const excludedSymbolsSet = new Set(responseData.excluded_symbols);
         const updatedSymbolsList = symbolList.filter(
@@ -159,7 +167,7 @@ function App() {
         setSymbolList(updatedSymbolsList);
 
         const excludedSymbolsList = responseData.excluded_symbols.join(", ");
-        let notificationMessage = `The following symbols had insufficient data and were not included in the graph: ${excludedSymbolsList}. I've removed them from your stock list.`;
+        notificationMessage += `The following symbols had insufficient data and were not included in the graph: ${excludedSymbolsList}. I've removed them from your stock list.`;
 
         if (responseData.market_data?.data.length > 0) {
           notificationMessage += " Data for other requested symbols should still be displayed.";
@@ -168,6 +176,40 @@ function App() {
           notificationMessage += " No other data could be retrieved for the graph.";
           setError(notificationMessage);
         }
+      }
+
+      let dateSpecificNotification = "";
+      if (responseData) {
+        const {
+          requested_date_from,
+          requested_date_to,
+          actual_data_start_date,
+          actual_data_end_date,
+          individual_stock_performance,
+          detail
+        } = responseData;
+
+        if (detail) {
+          // If backend provides a specific detail (e.g., "Could not find initial market data..."), use it.
+          dateSpecificNotification = detail;
+        } else if (actual_data_start_date && actual_data_end_date && individual_stock_performance && Object.keys(individual_stock_performance).length > 0) {
+          // Only check for discrepancies if chart data is present
+          if (actual_data_start_date !== requested_date_from || actual_data_end_date !== requested_date_to) {
+            dateSpecificNotification = `Displaying data from ${actual_data_start_date} to ${actual_data_end_date}. Your request for ${requested_date_from} to ${requested_date_to} was adjusted based on available data or trading days.`;
+          }
+        } else if ((!individual_stock_performance || Object.keys(individual_stock_performance).length === 0) && !detail) {
+          // If no performance data and no specific 'detail' message from backend, show generic message.
+          // This condition ensures it doesn't override a more specific 'detail' message.
+          dateSpecificNotification = "No performance data could be generated for the selected criteria.";
+        }
+      }
+
+      if (dateSpecificNotification) {
+        notificationMessage += (notificationMessage ? " " : "") + dateSpecificNotification;
+      }
+
+      if (notificationMessage) {
+        setError(notificationMessage.trim());
       }
 
       if (responseData?.individual_stock_performance && Object.keys(responseData.individual_stock_performance).length > 0) {
