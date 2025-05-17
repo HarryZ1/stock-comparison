@@ -87,7 +87,7 @@ async def fetch_data(symbols : str = Query(...),
         "symbols" : ",".join(symbol_list),
         "date_from": date_from,
         "date_to": date_to,
-        "limit": 10,
+        "limit": 10000,
         "sort": "ASC"
     }
 
