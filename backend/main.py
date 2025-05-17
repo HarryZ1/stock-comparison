@@ -5,6 +5,7 @@ import os
 import requests 
 from collections import defaultdict
 from datetime import datetime, date
+from typing import Optional
 
 load_dotenv() # Load environment variables from .env file
 
@@ -87,27 +88,34 @@ async def fetch_data(symbols : str = Query(...),
         "symbols" : ",".join(symbol_list),
         "date_from": date_from,
         "date_to": date_to,
-        "limit": 10000,
+        "limit": 1000,
         "sort": "ASC"
     }
+
+    actual_data_start_date_str: Optional[str] = None
+    actual_data_end_date_str: Optional[str] = None
 
     try:
         response = requests.get(marketstack_url, params=query_params)
         response.raise_for_status()
-        market_data = response.json()
+        market_data_response = response.json()
 
-        if "error" in market_data:
-            error_info = market_data["error"]
+        if "error" in market_data_response:
+            error_info = market_data_response["error"]
             error_message = error_info.get("message", "Unknown Marketstack API error")
             status_code = 502
             if error_info.get("code") in ["validation_error", "invalid_access_key", "invalid_date_format", "missing_symbols"]:
                 status_code = 400
             raise HTTPException(status_code=status_code, detail=f"Marketstack Error: {error_message}")
         
-        api_data = market_data.get("data")
+        api_data = market_data_response.get("data")
         if not api_data:
             return {
-                "market_data": market_data,
+                "requested_date_from": date_from,
+                "requested_date_to": date_to,
+                "actual_data_start_date": None,
+                "actual_data_end_date": None,
+                "market_data": market_data_response,
                 "individual_stock_performance": {},
                 "excluded_symbols": symbol_list
             } # no data available
@@ -136,7 +144,11 @@ async def fetch_data(symbols : str = Query(...),
     
     if first_valid_date_obj is None:
         return {
-                "market_data": market_data,
+                "requested_date_from": date_from,
+                "requested_date_to": date_to,
+                "actual_data_start_date": None,
+                "actual_data_end_date": None,
+                "market_data": market_data_response,
                 "individual_stock_performance": {},
                 "excluded_symbols": symbol_list
             }
@@ -154,9 +166,34 @@ async def fetch_data(symbols : str = Query(...),
             excluded_symbols.append(s)
 
     if not initial_shares:
-        raise HTTPException(status_code=404, detail="Could not find initial market data for any symbol on the start date.")
+        return { 
+            "requested_date_from": date_from,
+            "requested_date_to": date_to,
+            "actual_data_start_date": None, 
+            "actual_data_end_date": None,
+            "market_data_api_response": market_data_response,
+            "individual_stock_performance": {},
+            "excluded_symbols": symbol_list, 
+            "detail": "Could not find initial market data for any requested symbol on the effective start date of the processed data."
+        }
     
     sorted_date_strings_in_data = sorted(data_by_date.keys())
+
+    if not sorted_date_strings_in_data: 
+        return {
+            "requested_date_from": date_from,
+            "requested_date_to": date_to,
+            "actual_data_start_date": None,
+            "actual_data_end_date": None,
+            "market_data_api_response": market_data_response,
+            "individual_stock_performance": {},
+            "excluded_symbols": symbol_list
+        }
+    
+    if initial_shares: 
+        actual_data_start_date_str = sorted_date_strings_in_data[0]
+        actual_data_end_date_str = sorted_date_strings_in_data[-1]
+
 
     for curr_date in sorted_date_strings_in_data:
         curr_date_data = data_by_date[curr_date]
@@ -176,7 +213,11 @@ async def fetch_data(symbols : str = Query(...),
             })
 
     return {
-            "market_data": market_data,
+            "requested_date_from": date_from, 
+            "requested_date_to": date_to,     
+            "actual_data_start_date": actual_data_start_date_str, 
+            "actual_data_end_date": actual_data_end_date_str,    
+            "market_data": market_data_response,
             "individual_stock_performance": individual_stock_performance,
             "excluded_symbols": excluded_symbols
         }
